@@ -42,7 +42,7 @@ def process():
     # Generate frames
     logging.info("Predicting Frames")
     # TODO: Randomize
-    start_i = 50
+    start_i = 5000
     seed_frames = frames[start_i:start_i + N_FRAMES]
     pred_frames = [frame for frame in seed_frames]
     for i in tqdm(range(N_GEN_FRAMES)):
@@ -58,6 +58,7 @@ def process():
     pred_frames = np.asarray(pred_frames)
 
     # Get closest frames to map to audio
+    logging.info("Mapping predicted frames to GT frames")
     audio_idxs = get_closest_frames(pred_frames, frames)
     print(audio_idxs)
 
