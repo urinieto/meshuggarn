@@ -18,9 +18,10 @@ import matplotlib.pyplot as plt
 
 
 NORM_CQT_FRAMES = "../data/norm_cqt_frames.npy"
-BATCH_SIZE = 32
+BATCH_SIZE = 64
+N_FRAMES = 100  # Around 10 seconds of audio (HOP_SIZE * N_FRAMES / SR)
 LSTM_OUT = 512
-N_EPOCHS = 50
+N_EPOCHS = 100
 PATIENCE = 4
 TEST = 0.1
 
@@ -77,19 +78,21 @@ def sample_epoch(N, n_frames):
 
 
 def process():
-    timesteps = 32
-    x_train, y_train, x_test, y_test = get_dataset(timesteps)
+    x_train, y_train, x_test, y_test = get_dataset(N_FRAMES)
     cqt_bins = x_train.shape[-1]
 
     logging.info('Building model...')
     model = Sequential()
-    # model.add(LSTM(LSTM_UNITS, dropout=0.2, recurrent_dropout=0.2,
-                   # input_shape=(timesteps, cqt_bins)))
-    # model.add(LSTM(LSTM_UNITS, input_shape=(timesteps, cqt_bins), return_sequences=True))
-    # model.add(LSTM(LSTM_UNITS))
+    # model.add(LSTM(LSTM_OUT, dropout=0.2, recurrent_dropout=0.2,
+                   # input_shape=(N_FRAMES, cqt_bins)))
+    # model.add(LSTM(LSTM_OUT, input_shape=(N_FRAMES, cqt_bins), return_sequences=True))
+    # model.add(LSTM(LSTM_OUT))
     # model.add(Dense(cqt_bins, activation='linear'))
 
-    model.add(LSTM(cqt_bins, input_shape=(timesteps, cqt_bins)))
+    model.add(LSTM(LSTM_OUT, input_shape=(N_FRAMES, cqt_bins)))
+    model.add(Dense(cqt_bins, activation='linear'))
+
+    # model.add(LSTM(cqt_bins, input_shape=(N_FRAMES, cqt_bins)))
 
     adam = Adam(lr=0.001)
     model.compile(loss='mean_squared_error',
@@ -100,14 +103,29 @@ def process():
                              patience=PATIENCE, verbose=0, mode='auto')
 
     logging.info('Train...')
-    model.fit(x_train, y_train,
-              batch_size=BATCH_SIZE,
-              epochs=N_EPOCHS,
-              validation_data=(x_test, y_test),
-              callbacks=[stopping])
+    N = 20000
+    for i in range(N_EPOCHS):
+        logging.info('Sampling data for epoch {}...'.format(1 + i))
+        x_train, y_train, x_test, y_test = sample_epoch(N, N_FRAMES)
+        model.fit(x_train, y_train,
+                  batch_size=BATCH_SIZE,
+                  epochs=1, validation_data=(x_test, y_test))
+
+    # model.fit(x_train, y_train,
+              # batch_size=BATCH_SIZE,
+              # epochs=N_EPOCHS,
+              # validation_data=(x_test, y_test),
+              # callbacks=[stopping])
     score, acc = model.evaluate(x_test, y_test, batch_size=BATCH_SIZE)
     logging.info('Test loss: {}'.format(score))
     logging.info('Test accuracy: {}'.format(acc))
+
+    logging.info("Saving model...")
+    model_json = model.to_json()
+    with open("model.json", "w") as json_file:
+        json_file.write(model_json)
+    # serialize weights to HDF5
+    model.save_weights("model.h5")
 
 
 if __name__ == "__main__":
