@@ -14,8 +14,6 @@ from keras.layers import Dense, Activation, Embedding
 from keras.layers import LSTM
 from keras.optimizers import Adam
 
-import matplotlib.pyplot as plt
-
 
 NORM_CQT_FRAMES = "../data/norm_cqt_frames.npy"
 BATCH_SIZE = 64
